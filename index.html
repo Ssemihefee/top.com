@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#14132b">
+<title>Labirent Tüpü</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{--cap:min(84vw,58vh)}
+@supports (height:1dvh){:root{--cap:min(84vw,58dvh)}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none}
+body{
+  font-family:"Baloo 2",system-ui,sans-serif;color:#fff;
+  background:radial-gradient(circle at 50% 28%,#3b3a80 0,#14132b 72%);
+  touch-action:none;-webkit-user-select:none;user-select:none;
+}
+#stage{position:fixed;inset:0;perspective:900px;overflow:hidden}
+#rig{
+  position:absolute;left:50%;top:46%;width:var(--cap);height:var(--cap);
+  margin:calc(var(--cap)/-2) 0 0 calc(var(--cap)/-2);
+  transform:translate3d(0,9vh,-900px) rotateX(36deg) rotateZ(-14deg);
+  transition:transform 2.2s cubic-bezier(.25,.75,.2,1);
+}
+body.go #rig{transform:translate3d(0,0,0)}
+#body{
+  position:absolute;left:12%;right:12%;top:88%;height:180%;z-index:0;
+  border-radius:0 0 16% 16%/0 0 5% 5%;
+  background:linear-gradient(90deg,#b0124f,#ff4f93 28%,#ffa6c7 44%,#ff4f93 60%,#a40f48);
+  box-shadow:0 30px 60px rgba(0,0,0,.4);
+}
+#body::after{
+  content:"BALON YAPMA";position:absolute;left:0;right:0;top:30%;text-align:center;
+  font-weight:800;font-size:calc(var(--cap)*.09);letter-spacing:.04em;color:#fff;
+  background:rgba(20,19,43,.35);padding:.2em 0;
+}
+#neck{position:absolute;left:6%;right:6%;top:94%;height:9%;z-index:1;border-radius:12px;
+  background:repeating-linear-gradient(90deg,#128f9f 0 8px,#1aa7b8 8px 16px)}
+#cap{
+  position:absolute;inset:0;z-index:2;border-radius:22%;padding:5.5%;
+  background:linear-gradient(145deg,#4fe0f0,#14a9ba);
+  box-shadow:0 24px 50px rgba(0,0,0,.5),inset 0 -6px 0 rgba(0,0,0,.15);
+}
+#well{position:relative;width:100%;height:100%;border-radius:14%;overflow:hidden;box-shadow:inset 0 0 22px rgba(0,0,0,.6)}
+canvas{display:block;width:100%;height:100%}
+#gloss{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(135deg,rgba(255,255,255,.4),rgba(255,255,255,0) 38%),
+  radial-gradient(circle at 82% 92%,rgba(255,255,255,.16),transparent 40%)}
+#intro{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:max(7vh,env(safe-area-inset-top)) 24px max(8vh,env(safe-area-inset-bottom));text-align:center;pointer-events:none;
+  transition:opacity .8s ease}
+#intro h1{margin:0;font-weight:800;font-size:clamp(2.4rem,11vw,3.6rem);line-height:1}
+#intro p{margin:8px 0 0;opacity:.8;max-width:30ch}
+#go{
+  pointer-events:auto;font:800 1.5rem "Baloo 2",sans-serif;color:#2a1b00;background:#ffd23f;
+  border:0;border-radius:999px;padding:14px 44px;box-shadow:0 8px 0 #c79a00,0 16px 30px rgba(0,0,0,.4);
+}
+#go:active{transform:translateY(4px);box-shadow:0 4px 0 #c79a00}
+#go:focus-visible,.hb:focus-visible{outline:3px solid #fff;outline-offset:3px}
+body.go #intro{opacity:0;pointer-events:none}
+body.go #go{pointer-events:none}
+#msg{margin:12px 0 0;min-height:3em;font-size:.95rem;color:#ffb4a8;max-width:34ch}
+#hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;
+  padding:max(12px,env(safe-area-inset-top)) 16px 0;opacity:0;transition:opacity .8s 1.8s;pointer-events:none}
+body.play #hud{opacity:1}
+#lvl{font-weight:800;font-size:1.3rem}
+.hb{pointer-events:auto;font:600 .95rem "Baloo 2",sans-serif;color:#fff;background:rgba(255,255,255,.14);
+  border:1.5px solid rgba(255,255,255,.3);border-radius:999px;padding:6px 14px;margin-left:8px}
+#toast{position:fixed;left:0;right:0;bottom:max(7vh,env(safe-area-inset-bottom));text-align:center;font-weight:800;font-size:1.5rem;
+  opacity:0;transition:opacity .4s;pointer-events:none}
+#toast.on{opacity:1}
+.hap{position:fixed;left:-200px;top:0;opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){#rig{transition-duration:.01s}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="rig">
+    <div id="body"></div><div id="neck"></div>
+    <div id="cap"><div id="well"><canvas id="c" aria-label="Labirent oyunu"></canvas><div id="gloss"></div></div></div>
+  </div>
+</div>
+
+<div id="intro">
+  <div><h1>Labirent Tüpü</h1><p>Telefonu eğ, topu çıkışa götür.</p></div>
+  <div><button id="go" type="button">Oyuna başla</button><p id="msg" role="alert"></p></div>
+</div>
+
+<div id="hud">
+  <div id="lvl">Seviye 1</div>
+  <div><button class="hb" id="snd" type="button">Ses açık</button><button class="hb" id="cal" type="button">Sıfırla</button></div>
+</div>
+<div id="toast" aria-live="polite"></div>
+<label class="hap" id="hap" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
+
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var cv=$("c"), g=cv.getContext("2d");
+var N=6, level=1, S=0, cell=0, T=0, R=0, rects=[], mz=null;
+var bx=0, by=0, vx=0, vy=0, gx=0, gy=0, state="intro", winT=0, lastBump=0;
+var b0=0, g0=0, lastB=0, lastG=0, gotOri=false, kx=0, ky=0, px=0, py=0;
+var A=null, master=null, rollG=null, muted=false, last=0;
+var clamp=function(v,a,b){return Math.max(a,Math.min(b,v))};
+
+/* ---------- ses ---------- */
+function tone(f,t0,dur,type,vol,f2){
+  var o=A.createOscillator(), n=A.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t0);
+  if(f2) o.frequency.exponentialRampToValueAtTime(f2,t0+dur);
+  n.gain.setValueAtTime(0.0001,t0); n.gain.exponentialRampToValueAtTime(vol,t0+.012);
+  n.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  o.connect(n); n.connect(master); o.start(t0); o.stop(t0+dur+.05);
+}
+function initAudio(){
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext; A=new AC(); if(A.resume) A.resume();
+    master=A.createGain(); master.gain.value=.9; master.connect(A.destination);
+    var f=A.createBiquadFilter(); f.type="lowpass"; f.frequency.value=700;
+    var pad=A.createGain(); pad.gain.value=0; pad.gain.linearRampToValueAtTime(.05,A.currentTime+4);
+    f.connect(pad); pad.connect(master);
+    [110,164.81,207.65].forEach(function(fr,i){
+      var o=A.createOscillator(); o.type="sine"; o.frequency.value=fr; o.detune.value=(i-1)*6; o.connect(f); o.start();
+    });
+    var lfo=A.createOscillator(), lg=A.createGain(); lfo.frequency.value=.12; lg.gain.value=220;
+    lfo.connect(lg); lg.connect(f.frequency); lfo.start();
+    // yuvarlanma sesi
+    var len=A.sampleRate, buf=A.createBuffer(1,len,A.sampleRate), d=buf.getChannelData(0);
+    for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
+    var ns=A.createBufferSource(); ns.buffer=buf; ns.loop=true;
+    var bp=A.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=420; bp.Q.value=.8;
+    rollG=A.createGain(); rollG.gain.value=0; ns.connect(bp); bp.connect(rollG); rollG.connect(master); ns.start();
+    var P=[523.25,587.33,659.25,783.99,880];
+    (function bell(){
+      if(A&&A.state==="running"&&!muted) tone(P[(Math.random()*P.length)|0],A.currentTime,2.2,"sine",.03);
+      setTimeout(bell,2500+Math.random()*3500);
+    })();
+  }catch(e){A=null;}
+}
+function bump(p){ if(A&&!muted) tone(240,A.currentTime,.1,"triangle",.05+.2*p,90); }
+function chime(){ if(!A||muted) return; [523.25,659.25,783.99,1046.5].forEach(function(f,i){ tone(f,A.currentTime+i*.11,.5,"triangle",.14); }); }
+function buzz(ms){
+  if(navigator.vibrate){ navigator.vibrate(ms); return; }
+  var l=$("hap"); if(l){ try{ l.click(); }catch(e){} }
+}
+
+/* ---------- labirent ---------- */
+function css(a,b){ return a||b; }
+function build(){
+  S=cv.clientWidth; if(!S) return;
+  var dpr=Math.min(window.devicePixelRatio||1,3);
+  cv.width=cv.height=Math.round(S*dpr); g.setTransform(dpr,0,0,dpr,0,0);
+  N=Math.min(5+level,12); cell=S/N; T=Math.max(3,cell*.13); R=cell*.27;
+  var hw=[], vw=[], i, j, seen=[], st=[0];
+  for(i=0;i<(N+1)*N;i++){hw.push(1);vw.push(1);}
+  for(i=0;i<N*N;i++) seen.push(false);
+  seen[0]=true;
+  while(st.length){
+    var c=st[st.length-1], ci=c%N, cj=(c/N)|0, nb=[];
+    if(cj>0&&!seen[c-N]) nb.push([c-N,"n"]);
+    if(cj<N-1&&!seen[c+N]) nb.push([c+N,"s"]);
+    if(ci>0&&!seen[c-1]) nb.push([c-1,"w"]);
+    if(ci<N-1&&!seen[c+1]) nb.push([c+1,"e"]);
+    if(!nb.length){ st.pop(); continue; }
+    var p=nb[(Math.random()*nb.length)|0]; seen[p[0]]=true;
+    if(p[1]==="n") hw[cj*N+ci]=0; else if(p[1]==="s") hw[(cj+1)*N+ci]=0;
+    else if(p[1]==="w") vw[ci*N+cj]=0; else vw[(ci+1)*N+cj]=0;
+    st.push(p[0]);
+  }
+  for(i=0;i<N;i++){ hw[(1+((Math.random()*(N-1))|0))*N+((Math.random()*N)|0)]=0; }
+  rects=[];
+  for(j=0;j<=N;j++) for(i=0;i<N;i++) if(hw[j*N+i]) rects.push([i*cell-T/2,j*cell-T/2,(i+1)*cell+T/2,j*cell+T/2]);
+  for(i=0;i<=N;i++) for(j=0;j<N;j++) if(vw[i*N+j]) rects.push([i*cell-T/2,j*cell-T/2,i*cell+T/2,(j+1)*cell+T/2]);
+  mz=document.createElement("canvas"); mz.width=mz.height=Math.round(S*dpr);
+  var m=mz.getContext("2d"); m.scale(dpr,dpr);
+  m.fillStyle="#e6fbff"; m.fillRect(0,0,S,S);
+  m.fillStyle="#0b3c5d"; rects.forEach(function(r){ m.fillRect(r[0],r[1],r[2]-r[0],r[3]-r[1]); });
+  var hx=(N-.5)*cell, hy=(N-.5)*cell;
+  m.fillStyle="#ffd23f"; m.beginPath(); m.arc(hx,hy,cell*.3,0,7); m.fill();
+  var gr=m.createRadialGradient(hx,hy,0,hx,hy,cell*.24); gr.addColorStop(0,"#000"); gr.addColorStop(1,"#12263a");
+  m.fillStyle=gr; m.beginPath(); m.arc(hx,hy,cell*.24,0,7); m.fill();
+  bx=cell/2; by=cell/2; vx=vy=0;
+  $("lvl").textContent="Seviye "+level;
+}
+
+/* ---------- fizik ---------- */
+function collide(){
+  var maxI=0;
+  for(var k=0;k<rects.length;k++){
+    var r=rects[k], cx=clamp(bx,r[0],r[2]), cy=clamp(by,r[1],r[3]), dx=bx-cx, dy=by-cy, d2=dx*dx+dy*dy;
+    if(d2>=R*R) continue;
+    var nx, ny, pen;
+    if(d2>1e-9){ var d=Math.sqrt(d2); nx=dx/d; ny=dy/d; pen=R-d; }
+    else{
+      var l=bx-r[0], rr=r[2]-bx, tp=by-r[1], bt=r[3]-by, m=Math.min(l,rr,tp,bt);
+      nx=ny=0; if(m===l) nx=-1; else if(m===rr) nx=1; else if(m===tp) ny=-1; else ny=1; pen=R+m;
+    }
+    bx+=nx*pen; by+=ny*pen;
+    var vn=vx*nx+vy*ny;
+    if(vn<0){ vx-=1.4*vn*nx; vy-=1.4*vn*ny; if(-vn>maxI) maxI=-vn; }
+  }
+  if(maxI>S*.16){
+    var now=performance.now();
+    if(now-lastBump>110){ lastBump=now; var p=clamp(maxI/(S*.9),0,1); bump(p); buzz(Math.round(8+p*24)); }
+  }
+}
+function step(dt){
+  var sub=3, h=dt/sub, acc=S*1.8, vmax=S*1.1, fr=Math.exp(-1.1*h);
+  for(var k=0;k<sub;k++){
+    vx+=gx*acc*h; vy+=gy*acc*h; vx*=fr; vy*=fr;
+    var sp=Math.hypot(vx,vy); if(sp>vmax){ vx*=vmax/sp; vy*=vmax/sp; }
+    bx+=vx*h; by+=vy*h; collide();
+  }
+  if(Math.hypot(bx-(N-.5)*cell,by-(N-.5)*cell)<cell*.2){
+    state="won"; winT=performance.now(); chime(); buzz(60);
+    toast("Çıktın!");
+  }
+}
+function render(now){
+  g.clearRect(0,0,S,S); g.drawImage(mz,0,0,S,S);
+  var sc=1;
+  if(state==="won"){
+    var k=clamp((now-winT)/600,0,1), hx=(N-.5)*cell;
+    bx+=(hx-bx)*.2; by+=(hx-by)*.2; sc=1-k;
+  }
+  if(sc<=0) return;
+  var r=R*sc;
+  g.fillStyle="rgba(0,0,0,.25)"; g.beginPath(); g.arc(bx+r*.15,by+r*.25,r,0,7); g.fill();
+  var gr=g.createRadialGradient(bx-r*.35,by-r*.4,r*.1,bx,by,r);
+  gr.addColorStop(0,"#fff"); gr.addColorStop(.5,"#c4cfda"); gr.addColorStop(1,"#5d6c7b");
+  g.fillStyle=gr; g.beginPath(); g.arc(bx,by,r,0,7); g.fill();
+}
+function loop(now){
+  var dt=Math.min(.033,(now-last)/1000||.016); last=now;
+  if(S){
+    if(!gotOri){ gx=clamp(kx+px,-1,1); gy=clamp(ky+py,-1,1); }
+    if(state==="play") step(dt);
+    if(state==="won"&&now-winT>1300){ level++; build(); state="play"; toast("Seviye "+level); }
+    if(rollG&&A){ var s=state==="play"?clamp(Math.hypot(vx,vy)/(S*1.1),0,1):0; rollG.gain.setTargetAtTime(muted?0:s*.05,A.currentTime,.06); }
+    render(now);
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ---------- girdi ---------- */
+function onOri(e){
+  if(e.beta==null||e.gamma==null) return;
+  gotOri=true; lastB=e.beta; lastG=e.gamma;
+  var x=clamp((lastG-g0)/32,-1,1), y=clamp((lastB-b0)/32,-1,1);
+  gx=Math.abs(x)<.04?0:x; gy=Math.abs(y)<.04?0:y;
+}
+var sx=0, sy=0, drag=false;
+window.addEventListener("pointerdown",function(e){ if(e.target.closest&&e.target.closest("button")) return; drag=true; sx=e.clientX; sy=e.clientY; });
+window.addEventListener("pointermove",function(e){ if(!drag) return; px=clamp((e.clientX-sx)/90,-1,1); py=clamp((e.clientY-sy)/90,-1,1); });
+window.addEventListener("pointerup",function(){ drag=false; px=py=0; });
+window.addEventListener("keydown",function(e){
+  if(e.key==="ArrowLeft") kx=-.7; if(e.key==="ArrowRight") kx=.7; if(e.key==="ArrowUp") ky=-.7; if(e.key==="ArrowDown") ky=.7;
+});
+window.addEventListener("keyup",function(e){
+  if(e.key==="ArrowLeft"||e.key==="ArrowRight") kx=0; if(e.key==="ArrowUp"||e.key==="ArrowDown") ky=0;
+});
+
+var tt=0;
+function toast(s){ var t=$("toast"); t.textContent=s; t.classList.add("on"); clearTimeout(tt); tt=setTimeout(function(){ t.classList.remove("on"); },1400); }
+
+$("go").addEventListener("click",function(){
+  if(state!=="intro") return;
+  state="starting";
+  initAudio();
+  var Req=null;
+  if(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==="function") Req=DeviceOrientationEvent;
+  else if(window.DeviceMotionEvent&&typeof DeviceMotionEvent.requestPermission==="function") Req=DeviceMotionEvent;
+  var go=function(ok){
+    window.addEventListener("deviceorientation",onOri);
+    if(!ok) $("msg").textContent="Hareket izni verilmedi. Parmağınla ekranı sürükleyerek oynayabilirsin. İstersen Ayarlar > Safari bölümünden hareket erişimini aç.";
+    document.body.classList.add("go");
+    setTimeout(function(){
+      b0=lastB; g0=lastG; state="play"; document.body.classList.add("play");
+      toast(gotOri?"Telefonu yavaşça eğ":"Ekranı sürükle veya ok tuşlarını kullan");
+    },2300);
+  };
+  if(Req){ Req.requestPermission().then(function(r){ go(r==="granted"); }).catch(function(){ go(false); }); }
+  else go(true);
+});
+$("cal").addEventListener("click",function(){ b0=lastB; g0=lastG; toast("Sıfırlandı"); });
+$("snd").addEventListener("click",function(){
+  muted=!muted; $("snd").textContent=muted?"Ses kapalı":"Ses açık";
+  if(master) master.gain.setTargetAtTime(muted?0:.9,A.currentTime,.05);
+});
+document.addEventListener("visibilitychange",function(){
+  if(!A) return; if(document.hidden) A.suspend(); else A.resume();
+});
+var rz=0;
+window.addEventListener("resize",function(){ clearTimeout(rz); rz=setTimeout(function(){ if(state!=="won") build(); },200); });
+
+build();
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
